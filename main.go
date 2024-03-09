@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
-	"log/syslog"
+	"io"
 	"os/exec"
 	"strings"
 	"time"
@@ -39,11 +39,12 @@ var (
 )
 
 func main() {
-	syslog, err := syslog.New(syslog.LOG_INFO, "bluetooth-menu")
-	if err != nil {
-		panic("Unable to connect to syslog")
-	}
-	log.SetOutput(syslog)
+
+	// syslog, err := syslog.New(syslog.LOG_INFO, "bluetooth-menu")
+	// if err != nil {
+	// 	panic("Unable to connect to syslog")
+	// }
+	log.SetOutput(io.Discard)
 
 	systray.Run(func() {
 		systray.SetIcon(getIcon("logo"))
