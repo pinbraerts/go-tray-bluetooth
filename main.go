@@ -107,16 +107,16 @@ func (m *Bluetoothctl) connect(mac string, connect bool) error {
 }
 
 var (
-	//go:embed blue.png
+	//go:embed assets/blue.png
 	on []byte
 
-	//go:embed red.png
+	//go:embed assets/red.png
 	off []byte
 
-	//go:embed green.png
+	//go:embed assets/green.png
 	connected []byte
 
-	//go:embed yellow.png
+	//go:embed assets/yellow.png
 	standby []byte
 
 	b Bluetoothctl
