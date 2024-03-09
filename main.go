@@ -40,6 +40,72 @@ type App struct {
 	status Status
 }
 
+type Bluetoothctl struct { }
+
+func on_off(on bool) string {
+	if on {
+		return "on"
+	} else {
+		return "off"
+	}
+}
+
+func connect_disconnect(connect bool) string {
+	if connect {
+		return "connect"
+	} else {
+		return "disconnect"
+	}
+}
+
+func (m *Bluetoothctl) power(on bool) error {
+	return exec.Command("bluetoothctl", "power", on_off(on)).Run()
+}
+
+func (m *Bluetoothctl) scan(on bool) error {
+	return exec.Command("bluetoothctl", "scan", on_off(on)).Run()
+}
+
+func (m *Bluetoothctl) discovering(on bool) error {
+	return exec.Command("bluetoothctl", "discovering", on_off(on)).Run()
+}
+
+func (m *Bluetoothctl) devices(params ...string) (result map[string]string, err error) {
+	params = append([]string{"devices"}, params...)
+	log.Println(params)
+	output, err := exec.Command("bluetoothctl", params...).Output()
+	if err != nil {
+		return
+	}
+	result = getDevices(string(output))
+	return
+}
+
+func (m *Bluetoothctl) status() (result Status, err error) {
+	output, err := exec.Command("bluetoothctl", "show").Output()
+	for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+		parts := strings.Split(strings.TrimSpace(line), " ")
+		switch parts[0] {
+		case "Powered:":
+			result.powered = parts[1] == "yes"
+		case "Discoverable":
+			result.discoverable = parts[1] == "yes"
+		case "Pairable":
+			result.pairable = parts[1] == "yes"
+		case "Discovering":
+			result.discovering = parts[1] == "yes"
+		}
+		if parts[0] == "Powered:" {
+			result.powered = parts[1] == "yes"
+		}
+	}
+	return
+}
+
+func (m *Bluetoothctl) connect(mac string, connect bool) error {
+	return exec.Command("bluetoothctl", connect_disconnect(connect), mac).Run()
+}
+
 var (
 	//go:embed blue.png
 	on []byte
@@ -52,6 +118,8 @@ var (
 
 	//go:embed yellow.png
 	standby []byte
+
+	b Bluetoothctl
 )
 
 func main() {
@@ -86,22 +154,10 @@ func main() {
 					log.Println("quit")
 					systray.Quit()
 				case <- app.power.ClickedCh:
-					if app.status.powered {
-						log.Println("power off")
-						exec.Command("bluetoothctl", "power", "off").Run()
-					} else { 
-						log.Println("power on")
-						exec.Command("bluetoothctl", "power", "on").Run()
-					}
+					b.power(!app.status.powered)
 					app.update()
 				case <- app.discovering.ClickedCh:
-					if app.status.discovering {
-						log.Println("discovering off")
-						exec.Command("bluetoothctl", "scan", "off").Run()
-					} else {
-						log.Println("discovering on")
-						exec.Command("bluetoothctl", "scan", "on").Run()
-					}
+					b.discovering(!app.status.discovering)
 				case <- tick:
 					log.Println("tick")
 					app.update()
@@ -112,38 +168,20 @@ func main() {
 }
 
 func getStatus() (result Status, err error) {
-	output, err := exec.Command("bluetoothctl", "show").Output()
+	result, err = b.status()
 	if err != nil {
 		return
-	}
-	for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
-		parts := strings.Split(strings.TrimSpace(line), " ")
-		switch parts[0] {
-		case "Powered:":
-			result.powered = parts[1] == "yes"
-		case "Discoverable":
-			result.discoverable = parts[1] == "yes"
-		case "Pairable":
-			result.pairable = parts[1] == "yes"
-		case "Discovering":
-			result.discovering = parts[1] == "yes"
-		}
-		if parts[0] == "Powered:" {
-			result.powered = parts[1] == "yes"
-		}
 	}
 
-	output, err = exec.Command("bluetoothctl", "devices").Output()
+	result.devices, err = b.devices()
 	if err != nil {
 		return
 	}
-	result.devices = getDevices(string(output))
 
-	output, err = exec.Command("bluetoothctl", "devices", "Connected").Output()
+	result.connected, err = b.devices("Connected")
 	if err != nil {
 		return
 	}
-	result.connected = getDevices(string(output))
 
 	return
 }
@@ -202,13 +240,7 @@ func (m *App) update() (err error) {
 					select {
 					case <- item.menuItem.ClickedCh:
 						item = m.devices[mac]
-						if item.connected {
-							log.Println(item.name + " disconnect " + item.mac)
-							exec.Command("bluetoothctl", "disconnect", item.mac).Run()
-						} else {
-							log.Println(item.name + " connect " + item.mac)
-							exec.Command("bluetoothctl", "connect", item.mac).Run()
-						}
+						b.connect(mac, !item.connected)
 						m.update()
 					}
 				}
