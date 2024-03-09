@@ -171,26 +171,20 @@ func (m *App) update() (err error) {
 		return
 	}
 
-	if !m.status.powered {
-		systray.SetIcon(off)
-		m.power.SetTitle("Turn on")
-		m.discovering.SetTitle("Discover")
-		systray.SetTitle("off")
-	} else if m.status.discovering {
-		systray.SetIcon(on)
+	if m.status.powered {
 		m.power.SetTitle("Turn off")
-		m.discovering.SetTitle("Silent")
-		systray.SetTitle("discovering")
-	} else if len(m.status.connected) != 0 {
-		systray.SetIcon(connected)
-		m.power.SetTitle("Turn off")
-		m.discovering.SetTitle("Discover")
-		systray.SetTitle("connected")
+		if len(m.status.connected) != 0 {
+			systray.SetIcon(connected)
+		} else if m.status.discovering {
+			m.discovering.SetTitle("Silent")
+			systray.SetIcon(standby)
+		} else {
+			m.discovering.SetTitle("Discover")
+			systray.SetIcon(connected)
+		}
 	} else {
-		systray.SetIcon(standby)
-		m.power.SetTitle("Turn off")
-		m.discovering.SetTitle("Discover")
-		systray.SetTitle("powered")
+		m.power.SetTitle("Turn on")
+		systray.SetIcon(off)
 	}
 
 	for mac, name := range m.status.devices {
