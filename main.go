@@ -1,12 +1,12 @@
 package main
 
 import (
-	"log"
+	_ "embed"
 	"io"
+	"log"
 	"os/exec"
 	"strings"
 	"time"
-	_ "embed"
 
 	"github.com/getlantern/systray"
 )
@@ -180,7 +180,7 @@ func (m *App) update() (err error) {
 			systray.SetIcon(standby)
 		} else {
 			m.discovering.SetTitle("Discover")
-			systray.SetIcon(connected)
+			systray.SetIcon(on)
 		}
 	} else {
 		m.power.SetTitle("Turn on")
